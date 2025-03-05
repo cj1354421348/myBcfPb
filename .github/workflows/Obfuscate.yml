@@ -29,26 +29,30 @@ jobs:
 
       - name: 克隆 BPB worker js
         run: |
-          set -e  # 在这里添加 set -e
+          set -e
           wget -O origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
 
       - name: 比较原始文件
         id: compare_origin_files
         run: |
-          set -e # 也添加到这里
-
+          set -e
           if [[ -f origin.js ]]; then
-            echo "::set-output name=files_changed::$(diff origin.js origin.js | wc -l | tr -d '[:space:]')"
+            FILES_CHANGED=$(diff origin.js origin.js | wc -l | tr -d '[:space:]')
           else
-            echo "::set-output name=files_changed::1"
+            FILES_CHANGED=1
           fi
 
-          if [[ "${{ steps.compare_origin_files.outputs.files_changed }}" -eq "0" ]]; then
-            echo "原始文件没有更改。退出。"
-            exit 0
-          fi
+          echo "FILES_CHANGED=$FILES_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "FILES_CHANGED=$FILES_CHANGED" # 用于调试，输出到控制台
+
+      - name: 检查文件是否更改并决定是否退出
+        if: steps.compare_origin_files.outputs.FILES_CHANGED == '0'
+        run: |
+          echo "原始文件没有更改。退出。"
+          exit 0
 
       - name: 混淆 BPB worker js
+        if: steps.compare_origin_files.outputs.FILES_CHANGED != '0'
         run: |
           set -e
           npx javascript-obfuscator origin.js --output _worker.js \
@@ -66,6 +70,7 @@ jobs:
             --unicode-escape-sequence true
 
       - name: 提交更改
+        if: steps.compare_origin_files.outputs.FILES_CHANGED != '0'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
@@ -73,3 +78,8 @@ jobs:
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
           push_options: '--set-upstream'
           only_add: _worker.js  # 只提交 _worker.js 文件
+          gitignore: |
+            node_modules/
+            package-lock.json
+            package.json
+
