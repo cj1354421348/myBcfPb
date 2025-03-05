@@ -1,11 +1,11 @@
-name: Build Obfuscate BPB Panel
+name: 构建混淆 BPB 面板
 
 on:
   push:
     branches:
       - main
   schedule:
-    # Runs everyday at 1:00 AM
+    # 每天凌晨 1:00 运行
     - cron: "0 1 * * *"
 
 permissions:
@@ -16,64 +16,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out the code
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "latest"
+          node-version: "latest"  # 考虑指定版本，如 18.x 或 20.x
 
-      - name: Install dependencies
-        run: |
-          npm install -g javascript-obfuscator
+      - name: 安装依赖
+        run: npm install javascript-obfuscator
 
-      - name: Download BPB worker js
+      - name: 克隆 BPB worker js
         run: |
           wget -O origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
-          if [ $? -ne 0 ]; then
-            echo "Failed to download origin.js"
-            exit 1
+
+      - name: 比较原始文件
+        id: compare_origin_files
+        run: |
+          if [[ -f origin.js ]]; then
+            echo "::set-output name=files_changed::$(diff origin.js origin.js | wc -l | tr -d '[:space:]')"
+          else
+            echo "::set-output name=files_changed::1"
           fi
 
-      - name: Obfuscate BPB worker js
-        run: |
-          javascript-obfuscator origin.js --output _worker.js \
-          --compact true \
-          --control-flow-flattening true \
-          --control-flow-flattening-threshold 1 \
-          --dead-code-injection true \
-          --dead-code-injection-threshold 1 \
-          --identifier-names-generator hexadecimal \
-          --rename-globals true \
-          --string-array true \
-          --string-array-encoding 'rc4' \
-          --string-array-threshold 1 \
-          --transform-object-keys true \
-          --unicode-escape-sequence true
-          if [ $? -ne 0 ]; then
-            echo "Obfuscation failed"
-            exit 1
+          if [[ "${{ steps.compare_origin_files.outputs.files_changed }}" -eq "0" ]]; then
+            echo "原始文件没有更改。退出。"
+            exit 0
           fi
 
-      - name: Remove original file
-        run: rm origin.js
-
-      - name: Generate random commit message
-        id: commit_message
-        run: echo "::set-output name=message::$(cat /dev/urandom | tr -dc A-Za-z0-9\  | head -c 60)"
-
-      - name: Check for changes
-        id: check_changes
+      - name: 混淆 BPB worker js
         run: |
-          git add _worker.js
-          git diff --cached --quiet || echo "::set-output name=has_changes::true"
+          npx javascript-obfuscator origin.js --output _worker.js \
+            --compact true \
+            --control-flow-flattening true \
+            --control-flow-flattening-threshold 1 \
+            --dead-code-injection true \
+            --dead-code-injection-threshold 1 \
+            --identifier-names-generator hexadecimal \
+            --rename-globals true \
+            --string-array true \
+            --string-array-encoding 'rc4' \
+            --string-array-threshold 1 \
+            --transform-object-keys true \
+            --unicode-escape-sequence true
 
-      - name: Commit changes
-        if: steps.check_changes.outputs.has_changes == 'true'
+      - name: 提交更改
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
-          commit_message: "${{ steps.commit_message.outputs.message }}"
+          commit_message: ':arrow_up: 更新最新 bpb 面板'
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
-          push_options: '--set-upstream'  
+          push_options: '--set-upstream'
