@@ -82,7 +82,7 @@ jobs:
           commit_message: ':arrow_up: 更新最新 bpb 面板'
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
           push_options: '--set-upstream'
-          only_add: _worker.js origin.js # 提交 _worker.js 和 origin.js
+          only_add: _worker.js origin.js # 提交 _worker.js 和 origin
           gitignore: |
             node_modules/
             package-lock.json
