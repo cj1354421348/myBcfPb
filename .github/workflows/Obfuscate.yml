@@ -29,11 +29,14 @@ jobs:
 
       - name: 克隆 BPB worker js
         run: |
+          set -e  # 在这里添加 set -e
           wget -O origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
 
       - name: 比较原始文件
         id: compare_origin_files
         run: |
+          set -e # 也添加到这里
+
           if [[ -f origin.js ]]; then
             echo "::set-output name=files_changed::$(diff origin.js origin.js | wc -l | tr -d '[:space:]')"
           else
@@ -47,6 +50,7 @@ jobs:
 
       - name: 混淆 BPB worker js
         run: |
+          set -e
           npx javascript-obfuscator origin.js --output _worker.js \
             --compact true \
             --control-flow-flattening true \
