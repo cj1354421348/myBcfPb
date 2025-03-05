@@ -25,22 +25,18 @@ jobs:
           node-version: "latest"
 
       - name: 安装依赖
-        run: |
-          npm install javascript-obfuscator
-          sudo apt-get update
-          sudo apt-get install -y dos2unix
+        run: npm install javascript-obfuscator
 
       - name: 下载远程 BPB worker js
         run: |
           set -e
           wget -O remote_origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
+
       - name: 比较本地和远程文件
         id: compare_files
         run: |
           set -e
           LOCAL_FILE="origin.js"
-          REMOTE_FILE="remote_origin.js"
-
           # 如果本地文件不存在，则视为文件已更改
           if [ ! -f "$LOCAL_FILE" ]; then
             echo "文件 origin.js 不存在，视为已更改"
@@ -48,34 +44,11 @@ jobs:
             exit 0
           fi
 
-          # 强制刷新文件系统缓存
-          sync
+          # 使用 diff 比较本地文件和远程文件
+          DIFF=$(diff remote_origin.js origin.js | wc -l | tr -d '[:space:]')
+          echo "DIFF=$DIFF"
+          echo "FILES_CHANGED=$DIFF" >> "$GITHUB_OUTPUT"
 
-          # 比较文件
-          diff "$REMOTE_FILE" "$LOCAL_FILE" > /dev/null 2>&1
-          DIFF_RESULT=$?
-
-          # 调试信息
-          echo "---------- 调试信息 ----------"
-          echo "remote_origin.js 内容:"
-          cat "$REMOTE_FILE"
-          echo "origin.js 内容:"
-          cat "$LOCAL_FILE"
-
-          # 检查 diff 的结果
-          if [ $DIFF_RESULT -eq 0 ]; then
-            echo "文件相同"
-            echo "FILES_CHANGED=0" >> "$GITHUB_OUTPUT"
-            echo "diff 命令的退出码: $DIFF_RESULT"
-          else
-            echo "文件不同"
-            echo "FILES_CHANGED=1" >> "$GITHUB_OUTPUT"
-            echo "diff 命令的退出码: $DIFF_RESULT"
-            DIFF=$(diff "$REMOTE_FILE" "$LOCAL_FILE")
-            echo "diff 命令的输出:"
-            echo "$DIFF"
-          fi
-          echo "------------------------------"
       - name: 检查文件是否更改并决定是否退出
         if: steps.compare_files.outputs.FILES_CHANGED == '0'
         run: |
@@ -109,7 +82,7 @@ jobs:
           commit_message: ':arrow_up: 更新最新 bpb 面板'
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
           push_options: '--set-upstream'
-          only_add: _worker.js origin.js # 提交 _worker.js 和 origin.js
+          only_add: _worker.js origin.js # 提交 _worker.js 和 origin
           gitignore: |
             node_modules/
             package-lock.json
