@@ -22,7 +22,7 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "latest"  # 考虑指定版本，如 18.x 或 20.x
+          node-version: "latest"
 
       - name: 安装依赖
         run: npm install javascript-obfuscator
@@ -68,3 +68,4 @@ jobs:
           commit_message: ':arrow_up: 更新最新 bpb 面板'
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
           push_options: '--set-upstream'
+          only_add: _worker.js  # 只提交 _worker.js 文件
