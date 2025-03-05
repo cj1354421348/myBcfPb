@@ -37,6 +37,8 @@ jobs:
         run: |
           set -e
           LOCAL_FILE="origin.js"
+          REMOTE_FILE="remote_origin.js"
+
           # 如果本地文件不存在，则视为文件已更改
           if [ ! -f "$LOCAL_FILE" ]; then
             echo "文件 origin.js 不存在，视为已更改"
@@ -44,8 +46,8 @@ jobs:
             exit 0
           fi
 
-          # 使用 diff 比较本地文件和远程文件
-          DIFF=$(diff remote_origin.js origin.js | wc -l | tr -d '[:space:]')
+          # 使用 diff 比较本地文件和远程文件，并计算差异的行数
+          DIFF=$(diff "$REMOTE_FILE" "$LOCAL_FILE" | wc -l | tr -d '[:space:]')
           echo "DIFF=$DIFF"
           echo "FILES_CHANGED=$DIFF" >> "$GITHUB_OUTPUT"
 
