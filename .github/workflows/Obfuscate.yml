@@ -27,14 +27,10 @@ jobs:
       - name: 安装依赖
         run: npm install javascript-obfuscator
 
-      - name: 获取远程 BPB worker js
-        id: get_remote_file
+      - name: 下载远程 BPB worker js
         run: |
           set -e
-          REMOTE_CONTENT=$(curl -s https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js)
-          echo "REMOTE_CONTENT<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$REMOTE_CONTENT" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          wget -O remote_origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
 
       - name: 比较本地和远程文件
         id: compare_files
@@ -47,11 +43,11 @@ jobs:
             echo "FILES_CHANGED=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # 使用 diff 比较本地文件和远程内容
-          DIFF=$(diff <(echo "${{ steps.get_remote_file.outputs.REMOTE_CONTENT }}") "$LOCAL_FILE" | wc -l | tr -d '[:space:]')
+
+          # 使用 diff 比较本地文件和远程文件
+          DIFF=$(diff remote_origin.js origin.js | wc -l | tr -d '[:space:]')
           echo "DIFF=$DIFF"
           echo "FILES_CHANGED=$DIFF" >> "$GITHUB_OUTPUT"
-
 
       - name: 检查文件是否更改并决定是否退出
         if: steps.compare_files.outputs.FILES_CHANGED == '0'
@@ -59,12 +55,11 @@ jobs:
           echo "原始文件没有更改。退出。"
           exit 0
 
-      - name: 混淆 BPB worker js
+      - name: 覆盖本地文件并混淆 BPB worker js
         if: steps.compare_files.outputs.FILES_CHANGED != '0'
         run: |
           set -e
-          cp origin.js origin.js.bak #备份文件
-          echo "${{ steps.get_remote_file.outputs.REMOTE_CONTENT }}" > origin.js #将远程文件写入本地
+          cp remote_origin.js origin.js # 覆盖本地文件
           npx javascript-obfuscator origin.js --output _worker.js \
             --compact true \
             --control-flow-flattening true \
@@ -78,7 +73,6 @@ jobs:
             --string-array-threshold 1 \
             --transform-object-keys true \
             --unicode-escape-sequence true
-          mv origin.js.bak origin.js # 恢复文件
 
       - name: 提交更改
         if: steps.compare_files.outputs.FILES_CHANGED != '0'
@@ -100,5 +94,5 @@ jobs:
           set -e
           # 如果 origin.js 不存在，则创建它并将远程内容写入
           if [ ! -f "origin.js" ]; then
-            echo "${{ steps.get_remote_file.outputs.REMOTE_CONTENT }}" > origin.js
+            cp remote_origin.js origin.js
           fi
