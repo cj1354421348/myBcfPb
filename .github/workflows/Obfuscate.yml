@@ -52,7 +52,8 @@ jobs:
           sync
 
           # 比较文件
-          DIFF=$(diff "$REMOTE_FILE" "$LOCAL_FILE")
+          diff "$REMOTE_FILE" "$LOCAL_FILE" > /dev/null 2>&1
+          DIFF_RESULT=$?
 
           # 调试信息
           echo "---------- 调试信息 ----------"
@@ -60,18 +61,21 @@ jobs:
           cat "$REMOTE_FILE"
           echo "origin.js 内容:"
           cat "$LOCAL_FILE"
-          echo "diff 命令的输出:"
-          echo "$DIFF"
-          echo "------------------------------"
 
-          # 检查 diff 的输出是否为空
-          if [ -z "$DIFF" ]; then
+          # 检查 diff 的结果
+          if [ $DIFF_RESULT -eq 0 ]; then
             echo "文件相同"
             echo "FILES_CHANGED=0" >> "$GITHUB_OUTPUT"
+            echo "diff 命令的退出码: $DIFF_RESULT"
           else
             echo "文件不同"
             echo "FILES_CHANGED=1" >> "$GITHUB_OUTPUT"
+            echo "diff 命令的退出码: $DIFF_RESULT"
+            DIFF=$(diff "$REMOTE_FILE" "$LOCAL_FILE")
+            echo "diff 命令的输出:"
+            echo "$DIFF"
           fi
+          echo "------------------------------"
       - name: 检查文件是否更改并决定是否退出
         if: steps.compare_files.outputs.FILES_CHANGED == '0'
         run: |
